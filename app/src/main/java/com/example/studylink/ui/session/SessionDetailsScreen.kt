@@ -1,6 +1,8 @@
 package com.example.studylink.ui.session
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -9,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,7 +32,6 @@ fun SessionDetailScreen(navController: NavHostController, sessionId: String) {
     var isLoading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
 
-    // Load session in real time
     LaunchedEffect(sessionId) {
         sessionRepository.getSessions { sessions ->
             session = sessions.find { it.id == sessionId }
@@ -46,7 +48,6 @@ fun SessionDetailScreen(navController: NavHostController, sessionId: String) {
                     }
                 },
                 actions = {
-                    // Show delete button only for the host
                     if (session?.hostId == currentUserId) {
                         IconButton(onClick = {
                             sessionRepository.deleteSession(sessionId,
@@ -69,41 +70,144 @@ fun SessionDetailScreen(navController: NavHostController, sessionId: String) {
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Course + topic header
-                Text(text = s.course, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                Text(text = s.topic, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Header card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = s.topic,
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = s.course,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                            Surface(
+                                color = if (s.currentSlots < s.maxSlots)
+                                    MaterialTheme.colorScheme.tertiaryContainer
+                                else MaterialTheme.colorScheme.errorContainer,
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = "${s.currentSlots}/${s.maxSlots}",
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (s.currentSlots < s.maxSlots)
+                                        MaterialTheme.colorScheme.onTertiaryContainer
+                                    else MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
 
-                HorizontalDivider()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                // Session info
-                InfoRow(label = "📍 Location", value = s.location)
-                InfoRow(label = "🕐 Time", value = s.time)
-                InfoRow(label = "👤 Host", value = s.hostName)
-                InfoRow(label = "👥 Spots", value = "${s.currentSlots}/${s.maxSlots} filled")
+                        InfoRow(label = "📍 Location", value = s.location)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        InfoRow(label = "🕐 Time", value = s.time)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        InfoRow(label = "👤 Host", value = s.hostName)
 
-                HorizontalDivider()
+                        if (s.clubOnly && s.club.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            InfoRow(label = "🔒 Club", value = s.club)
+                        }
+                    }
+                }
 
-                // Participants section
-                Text(text = "Participants (${s.participants.size})", fontWeight = FontWeight.SemiBold)
-                if (s.participants.isEmpty()) {
-                    Text(
-                        text = "No one has joined yet — be the first!",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 14.sp
-                    )
-                } else {
-                    s.participants.forEach { participantId ->
-                        Text(text = "• $participantId", fontSize = 14.sp)
+                // Participants card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = "Participants (${s.participants.size})",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        if (s.participants.isEmpty()) {
+                            Text(
+                                text = "No one has joined yet — be the first!",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp
+                            )
+                        } else {
+                            s.participants.forEach { participantId ->
+                                val displayName = if (participantId == currentUserId) "You" else "Study Partner"
+                                Row(
+                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primaryContainer),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = displayName.first().toString(),
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Text(
+                                        text = displayName,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
                 if (message.isNotEmpty()) {
-                    Text(text = message, color = MaterialTheme.colorScheme.error)
+                    Text(
+                        text = message,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 13.sp
+                    )
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // Join / Already joined / Full button
                 val alreadyJoined = s.participants.contains(currentUserId)
                 val isFull = s.currentSlots >= s.maxSlots
                 val isHost = s.hostId == currentUserId
@@ -123,8 +227,8 @@ fun SessionDetailScreen(navController: NavHostController, sessionId: String) {
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(12.dp),
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
                     enabled = !alreadyJoined && !isFull && !isHost && !isLoading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = when {
@@ -135,15 +239,23 @@ fun SessionDetailScreen(navController: NavHostController, sessionId: String) {
                         }
                     )
                 ) {
-                    Text(
-                        text = when {
-                            isHost -> "You're hosting this session"
-                            alreadyJoined -> "✓ You've joined"
-                            isFull -> "Session is full"
-                            else -> "Join Session"
-                        },
-                        fontSize = 16.sp
-                    )
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Text(
+                            text = when {
+                                isHost -> "You're hosting this session"
+                                alreadyJoined -> "✓ You've joined"
+                                isFull -> "Session is full"
+                                else -> "Join Session"
+                            },
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         } ?: Box(
@@ -159,9 +271,20 @@ fun SessionDetailScreen(navController: NavHostController, sessionId: String) {
 fun InfoRow(label: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, fontWeight = FontWeight.Medium)
-        Text(text = value, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = label,
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Medium
+        )
     }
 }

@@ -14,11 +14,9 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.studylink.navigation.NavGraph
@@ -49,22 +47,20 @@ fun StudyLinkApp() {
     val navController = rememberNavController()
     val auth = FirebaseAuth.getInstance()
 
-    val startDestination = if (auth.currentUser != null) {
-        Routes.HOME
-    } else {
-        Routes.LOGIN
-    }
+    val startDestination = Routes.SPLASH
 
     val bottomNavItems = listOf(
         BottomNavItem(Routes.HOME, Icons.Default.Home, "Home"),
-        BottomNavItem(Routes.SESSION_DETAIL, Icons.Default.DateRange, "Sessions"),
+        BottomNavItem(Routes.SESSIONS_LIST, Icons.Default.DateRange, "Sessions"),
         BottomNavItem(Routes.CREATE_SESSION, Icons.Default.Add, "Create"),
         BottomNavItem(Routes.PROFILE, Icons.Default.Person, "Profile")
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val showBottomBar = currentRoute != Routes.LOGIN
+
+    val showBottomBar = currentRoute != Routes.LOGIN &&
+            currentRoute != Routes.SPLASH
 
     Scaffold(
         bottomBar = {

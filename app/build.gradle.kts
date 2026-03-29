@@ -31,11 +31,9 @@ android {
 
         val webClientId = localProperties.getProperty("WEB_CLIENT_ID") ?: ""
         buildConfigField("String", "WEB_CLIENT_ID", "\"$webClientId\"")
-        buildFeatures {
-            buildConfig = true
-        }
-        //Gemini
-        buildConfigField("String", "GEMINI_API_KEY", "\"${project.findProperty("GEMINI_API_KEY")}\"")
+
+        val geminiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
     }
 
     buildTypes {
@@ -47,12 +45,14 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -93,7 +93,7 @@ dependencies {
 
     // Compose Activity
     implementation("androidx.activity:activity-compose:1.8.2")
+    //Navy
+    implementation("androidx.navigation:navigation-compose:2.7.7")
 
-    //Gemini
-    implementation("com.google.ai.client.generativeai:generativeai:0.7.0")
 }

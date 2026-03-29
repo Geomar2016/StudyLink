@@ -3,21 +3,68 @@ package com.example.studylink.data.repository
 import com.example.studylink.BuildConfig
 import com.example.studylink.data.model.Session
 import com.example.studylink.data.model.User
-import com.google.ai.client.generativeai.GenerativeModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 class GeminiRepository {
 
-    private val model = GenerativeModel(
-        modelName = "gemini-1.5-flash",
-        apiKey = BuildConfig.GEMINI_API_KEY
-    )
+    private val apiKey = BuildConfig.GEMINI_API_KEY
+    private val baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
 
-    // Feature 1 - Smart Session Recommender
+    private suspend fun callGemini(prompt: String): String = withContext(Dispatchers.IO) {
+        try {
+            val url = URL(baseUrl)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "POST"
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("x-goog-api-key", apiKey)
+            connection.connectTimeout = 15000
+            connection.readTimeout = 15000
+            connection.doOutput = true
+
+            val body = JSONObject().apply {
+                put("contents", JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("parts", JSONArray().apply {
+                            put(JSONObject().apply {
+                                put("text", prompt)
+                            })
+                        })
+                    })
+                })
+            }.toString()
+
+            connection.outputStream.use { it.write(body.toByteArray()) }
+
+            val responseCode = connection.responseCode
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val response = connection.inputStream.bufferedReader().readText()
+                val json = JSONObject(response)
+                json.getJSONArray("candidates")
+                    .getJSONObject(0)
+                    .getJSONObject("content")
+                    .getJSONArray("parts")
+                    .getJSONObject(0)
+                    .getString("text")
+            } else {
+                val errorResponse = connection.errorStream?.bufferedReader()?.readText() ?: "No error body"
+                android.util.Log.e("GeminiAPI", "Error code: $responseCode, Body: $errorResponse")
+                "Unable to get recommendations right now. Try again later."
+            }
+        } catch (e: Exception) {
+            "Unable to get recommendations right now. Try again later."
+        }
+    }
+
     suspend fun recommendSessions(user: User, sessions: List<Session>): String {
-        if (sessions.isEmpty()) return "No sessions available to recommend."
+        if (sessions.isEmpty()) return "No sessions available yet — be the first to post one!"
 
         val sessionList = sessions.joinToString("\n") { session ->
-            "- ${session.course}: ${session.topic} at ${session.location} (${session.time}) — ${session.currentSlots}/${session.maxSlots} spots filled. Club: ${session.club.ifEmpty { "Open to all" }}"
+            "- ${session.course}: ${session.topic} at ${session.location} (${session.time}) — ${session.currentSlots}/${session.maxSlots} spots"
         }
 
         val prompt = """
@@ -27,49 +74,32 @@ class GeminiRepository {
             - Name: ${user.name}
             - Major: ${user.major}
             - Year: ${user.year}
-            - Courses: ${user.courses.joinToString(", ")}
-            - Clubs: ${user.clubs.joinToString(", ")}
-            - Hobbies: ${user.hobbies.joinToString(", ")}
+            - Courses: ${user.courses.joinToString(", ").ifEmpty { "Not specified" }}
+            - Clubs: ${user.clubs.joinToString(", ").ifEmpty { "None" }}
+            - Hobbies: ${user.hobbies.joinToString(", ").ifEmpty { "Not specified" }}
             
             Available study sessions:
             $sessionList
             
-            Recommend the TOP 3 most relevant sessions for this student and explain why each one is a good fit in 1-2 sentences. Be friendly and encouraging. Format each recommendation clearly.
+            Recommend the TOP 3 most relevant sessions for this student and explain why each is a good fit in 1-2 sentences. Be friendly and encouraging. Keep the response concise.
         """.trimIndent()
 
-        return try {
-            val response = model.generateContent(prompt)
-            response.text ?: "Unable to generate recommendations."
-        } catch (e: Exception) {
-            "Error getting recommendations: ${e.message}"
-        }
+        return callGemini(prompt)
     }
 
-    // Feature 2 - Auto Session Description Generator
     suspend fun generateSessionDescription(course: String, topic: String): String {
         val prompt = """
-            You are helping a university student create a study session on StudyLink.
-            
+            Generate a SHORT, friendly study session description (2-3 sentences max) for:
             Course: $course
             Topic: $topic
             
-            Generate a SHORT, friendly session description (2-3 sentences max) that:
-            - Explains what will be covered
-            - Mentions what participants should prepare
-            - Sounds welcoming and collaborative
-            
+            Make it welcoming and collaborative. Mention what participants should prepare.
             Keep it casual and encouraging, not formal.
         """.trimIndent()
 
-        return try {
-            val response = model.generateContent(prompt)
-            response.text ?: "Come join us to study $topic together!"
-        } catch (e: Exception) {
-            "Come join us to study $topic in $course!"
-        }
+        return callGemini(prompt)
     }
 
-    // Feature 3 - Smart Search
     suspend fun smartSearch(query: String, sessions: List<Session>): List<Session> {
         if (sessions.isEmpty() || query.isBlank()) return sessions
 
@@ -78,37 +108,47 @@ class GeminiRepository {
         }.joinToString("\n")
 
         val prompt = """
-            You are a search assistant for a university study app.
-            
             User search query: "$query"
             
             Available sessions (format: index: details):
             $sessionList
             
-            Return ONLY a comma-separated list of the index numbers of sessions that match the query.
+            Return ONLY a comma-separated list of index numbers of sessions that match the query.
             Consider course names, topics, locations, and times.
-            Be generous with matches — if it could be relevant, include it.
-            If none match, return "none".
+            If none match return "none".
             Example response: "0,2,4" or "none"
         """.trimIndent()
 
         return try {
-            val response = model.generateContent(prompt)
-            val text = response.text?.trim() ?: return sessions
-            if (text == "none") return emptyList()
-            val indices = text.split(",").mapNotNull { it.trim().toIntOrNull() }
-            indices.mapNotNull { sessions.getOrNull(it) }
+            val response = callGemini(prompt)
+            if (response.contains("none", ignoreCase = true) ||
+                response.contains("Unable", ignoreCase = true)) {
+                sessions.filter { session ->
+                    session.course.contains(query, ignoreCase = true) ||
+                            session.topic.contains(query, ignoreCase = true) ||
+                            session.location.contains(query, ignoreCase = true)
+                }
+            } else {
+                val indices = response.trim()
+                    .split(",")
+                    .mapNotNull { it.trim().toIntOrNull() }
+                if (indices.isEmpty()) {
+                    sessions.filter { session ->
+                        session.course.contains(query, ignoreCase = true) ||
+                                session.topic.contains(query, ignoreCase = true)
+                    }
+                } else {
+                    indices.mapNotNull { sessions.getOrNull(it) }
+                }
+            }
         } catch (e: Exception) {
-            // Fall back to basic search if Gemini fails
             sessions.filter { session ->
                 session.course.contains(query, ignoreCase = true) ||
-                        session.topic.contains(query, ignoreCase = true) ||
-                        session.location.contains(query, ignoreCase = true)
+                        session.topic.contains(query, ignoreCase = true)
             }
         }
     }
 
-    // Feature 4 - Club Session Matcher
     suspend fun matchClubSessions(user: User, sessions: List<Session>): List<Session> {
         if (user.clubs.isEmpty()) return sessions
         return sessions.filter { session ->
