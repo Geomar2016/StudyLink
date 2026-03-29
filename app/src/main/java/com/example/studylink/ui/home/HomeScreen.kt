@@ -25,23 +25,53 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.example.studylink.R
 import com.example.studylink.data.model.Session
+import com.example.studylink.data.model.User
+import com.example.studylink.data.repository.GeminiRepository
 import com.example.studylink.data.repository.SessionRepository
 import com.example.studylink.data.repository.UserRepository
 import com.example.studylink.navigation.Routes
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavHostController) {
     val sessionRepository = SessionRepository()
     val userRepository = UserRepository()
+    val geminiRepository = GeminiRepository()
+    val scope = rememberCoroutineScope()
+
     var sessions by remember { mutableStateOf<List<Session>>(emptyList()) }
+    var filteredSessions by remember { mutableStateOf<List<Session>>(emptyList()) }
     var userName by remember { mutableStateOf("") }
+    var currentUser by remember { mutableStateOf<User?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearching by remember { mutableStateOf(false) }
+    var recommendations by remember { mutableStateOf("") }
+    var showRecommendations by remember { mutableStateOf(false) }
+    var isLoadingRecommendations by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        sessionRepository.getSessions { sessions = it }
+        sessionRepository.getSessions { result ->
+            sessions = result
+            filteredSessions = result
+        }
         userRepository.getCurrentUser { user ->
+            currentUser = user
             userName = user?.name?.split(" ")?.firstOrNull() ?: "there"
         }
+    }
+
+    // Smart search with debounce
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isBlank()) {
+            filteredSessions = sessions
+            return@LaunchedEffect
+        }
+        isSearching = true
+        delay(500)
+        filteredSessions = geminiRepository.smartSearch(searchQuery, sessions)
+        isSearching = false
     }
 
     LazyColumn(
@@ -131,6 +161,124 @@ fun HomeScreen(navController: NavHostController) {
             }
         }
 
+        // AI Recommendations
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "✨", fontSize = 18.sp)
+                            Text(
+                                text = "AI Recommendations",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                if (currentUser != null && sessions.isNotEmpty()) {
+                                    isLoadingRecommendations = true
+                                    showRecommendations = true
+                                    scope.launch {
+                                        recommendations = geminiRepository
+                                            .recommendSessions(currentUser!!, sessions)
+                                        isLoadingRecommendations = false
+                                    }
+                                }
+                            }
+                        ) {
+                            Text(
+                                text = if (showRecommendations) "Refresh" else "Get suggestions",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+
+                    if (showRecommendations) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (isLoadingRecommendations) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Analyzing your profile...",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = recommendations,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                lineHeight = 20.sp
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "Get personalized session suggestions based on your courses and clubs",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        // Smart search bar
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = { Text("Search courses, topics, locations...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    trailingIcon = {
+                        if (isSearching) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                )
+                if (searchQuery.isNotBlank()) {
+                    Text(
+                        text = "✨ AI-powered search",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                    )
+                }
+            }
+        }
+
         // Stats grid
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -191,7 +339,7 @@ fun HomeScreen(navController: NavHostController) {
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-                TextButton(onClick = { navController.navigate(Routes.SESSION_DETAIL) }) {
+                TextButton(onClick = { navController.navigate(Routes.HOME) }) {
                     Text(
                         text = "View All",
                         color = MaterialTheme.colorScheme.primary,
@@ -202,7 +350,7 @@ fun HomeScreen(navController: NavHostController) {
         }
 
         // Session cards
-        if (sessions.isEmpty()) {
+        if (filteredSessions.isEmpty()) {
             item {
                 Box(
                     modifier = Modifier
@@ -211,14 +359,15 @@ fun HomeScreen(navController: NavHostController) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No sessions yet!\nBe the first to post one 📚",
+                        text = if (searchQuery.isBlank()) "No sessions yet!\nBe the first to post one 📚"
+                        else "No sessions found for \"$searchQuery\"",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp
                     )
                 }
             }
         } else {
-            items(sessions.take(3)) { session ->
+            items(filteredSessions.take(3)) { session ->
                 HomeSessionCard(
                     session = session,
                     onClick = {

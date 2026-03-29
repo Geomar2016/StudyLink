@@ -34,6 +34,8 @@ android {
         buildFeatures {
             buildConfig = true
         }
+        //Gemini
+        buildConfigField("String", "GEMINI_API_KEY", "\"${project.findProperty("GEMINI_API_KEY")}\"")
     }
 
     buildTypes {
@@ -91,4 +93,7 @@ dependencies {
 
     // Compose Activity
     implementation("androidx.activity:activity-compose:1.8.2")
+
+    //Gemini
+    implementation("com.google.ai.client.generativeai:generativeai:0.7.0")
 }

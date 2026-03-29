@@ -10,5 +10,7 @@ data class Session(
         val time: String = "",
         val maxSlots: Int = 4,
         val currentSlots: Int = 0,
-        val participants: List<String> = emptyList()
+        val participants: List<String> = emptyList(),
+        val clubOnly: Boolean = false,
+        val club: String = ""
 )

@@ -9,5 +9,7 @@ data class User(
     val courses: List<String> = emptyList(),
     val hobbies: List<String> = emptyList(),
     val aboutMe: String = "",
-    val profilePicUrl: String = ""
+    val profilePicUrl: String = "",
+    val clubs: List<String> = emptyList(),
+    val association: String = ""
 )
