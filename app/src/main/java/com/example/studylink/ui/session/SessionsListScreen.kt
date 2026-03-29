@@ -19,6 +19,7 @@ import androidx.navigation.NavHostController
 import com.example.studylink.data.model.Session
 import com.example.studylink.data.repository.GeminiRepository
 import com.example.studylink.data.repository.SessionRepository
+import com.example.studylink.ui.theme.OceanBackground
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,127 +68,129 @@ fun SessionsListScreen(navController: NavHostController) {
         isSearching = false
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Header
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = "Study Sessions",
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "Find and join study sessions or create your own",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        OceanBackground()
 
-        // Search + filter card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             Column(
-                modifier = Modifier.padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search sessions...") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true,
-                    trailingIcon = {
-                        if (isSearching) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
+                Text(
+                    text = "Study Sessions",
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
+                Text(
+                    text = "Find and join study sessions or create your own",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-                Box {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     OutlinedTextField(
-                        value = selectedSubject,
-                        onValueChange = {},
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showFilterDropdown = true },
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Search sessions...") },
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        readOnly = true,
+                        singleLine = true,
                         trailingIcon = {
-                            Icon(
-                                Icons.Default.ArrowDropDown,
-                                contentDescription = null,
-                                modifier = Modifier.clickable { showFilterDropdown = true }
-                            )
+                            if (isSearching) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     )
-                    DropdownMenu(
-                        expanded = showFilterDropdown,
-                        onDismissRequest = { showFilterDropdown = false }
-                    ) {
-                        subjects.forEach { subject ->
-                            DropdownMenuItem(
-                                text = { Text(subject) },
-                                onClick = {
-                                    selectedSubject = subject
-                                    showFilterDropdown = false
-                                }
-                            )
+
+                    Box {
+                        OutlinedTextField(
+                            value = selectedSubject,
+                            onValueChange = {},
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showFilterDropdown = true },
+                            shape = RoundedCornerShape(12.dp),
+                            readOnly = true,
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.ArrowDropDown,
+                                    contentDescription = null,
+                                    modifier = Modifier.clickable { showFilterDropdown = true }
+                                )
+                            }
+                        )
+                        DropdownMenu(
+                            expanded = showFilterDropdown,
+                            onDismissRequest = { showFilterDropdown = false }
+                        ) {
+                            subjects.forEach { subject ->
+                                DropdownMenuItem(
+                                    text = { Text(subject) },
+                                    onClick = {
+                                        selectedSubject = subject
+                                        showFilterDropdown = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        if (filteredSessions.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = if (searchQuery.isBlank()) "No sessions yet!\nBe the first to post one 📚"
-                    else "No sessions found for \"$searchQuery\"",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 14.sp
-                )
-            }
-        } else {
-            LazyColumn(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(filteredSessions) { session ->
-                    SessionListCard(
-                        session = session,
-                        onJoinClick = {
-                            navController.navigate("session_detail/${session.id}")
-                        },
-                        onDetailsClick = {
-                            navController.navigate("session_detail/${session.id}")
-                        }
+            if (filteredSessions.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (searchQuery.isBlank()) "No sessions yet!\nBe the first to post one 📚"
+                        else "No sessions found for \"$searchQuery\"",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 14.sp
                     )
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredSessions) { session ->
+                        SessionListCard(
+                            session = session,
+                            onJoinClick = {
+                                navController.navigate("session_detail/${session.id}")
+                            },
+                            onDetailsClick = {
+                                navController.navigate("session_detail/${session.id}")
+                            }
+                        )
+                    }
                 }
             }
         }
