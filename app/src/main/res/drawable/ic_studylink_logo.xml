@@ -1,0 +1,63 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Book body -->
+    <path
+        android:fillColor="#6C63FF"
+        android:pathData="M4,4 L14,4 Q15,4 15,5 L15,19 Q15,20 14,20 L4,20 Q3,20 3,19 L3,5 Q3,4 4,4 Z"/>
+
+    <!-- Book spine -->
+    <path
+        android:fillColor="#4A44CC"
+        android:pathData="M3,4 L5,4 L5,20 L3,20 Z"/>
+
+    <!-- Page lines -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeAlpha="0.5"
+        android:pathData="M7,8 L13,8"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeAlpha="0.5"
+        android:pathData="M7,11 L13,11"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeAlpha="0.5"
+        android:pathData="M7,14 L11,14"/>
+
+    <!-- Network nodes -->
+    <path
+        android:fillColor="#FF6B6B"
+        android:pathData="M19,6 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0"/>
+    <path
+        android:fillColor="#FF6B6B"
+        android:fillAlpha="0.85"
+        android:pathData="M20.5,13 m-2,0 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0"/>
+    <path
+        android:fillColor="#FF6B6B"
+        android:fillAlpha="0.9"
+        android:pathData="M18,19 m-2.2,0 a2.2,2.2 0 1,0 4.4,0 a2.2,2.2 0 1,0 -4.4,0"/>
+
+    <!-- Connection lines -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeAlpha="0.6"
+        android:pathData="M15,7 L16.5,6.5"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeAlpha="0.5"
+        android:pathData="M19,8.5 L20,11"/>
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeAlpha="0.5"
+        android:pathData="M20.5,15 L19,16.8"/>
+</vector>
