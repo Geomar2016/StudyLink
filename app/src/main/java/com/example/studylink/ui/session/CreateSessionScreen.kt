@@ -21,24 +21,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.example.studylink.data.model.Session
+import com.example.studylink.data.repository.GeminiRepository
 import com.example.studylink.data.repository.SessionRepository
 import com.example.studylink.data.repository.UserRepository
 import com.example.studylink.navigation.Routes
-import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateSessionScreen(navController: NavHostController) {
     val sessionRepository = SessionRepository()
     val userRepository = UserRepository()
-    val auth = FirebaseAuth.getInstance()
+    val geminiRepository = GeminiRepository()
+    val scope = rememberCoroutineScope()
 
     var sessionTitle by remember { mutableStateOf("") }
     var subject by remember { mutableStateOf("") }
@@ -52,6 +53,7 @@ fun CreateSessionScreen(navController: NavHostController) {
     var club by remember { mutableStateOf("") }
     var isClubOnly by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+    var isGeneratingDesc by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
     var showSubjectDropdown by remember { mutableStateOf(false) }
     var showDurationDropdown by remember { mutableStateOf(false) }
@@ -172,17 +174,69 @@ fun CreateSessionScreen(navController: NavHostController) {
                     }
                 }
 
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description") },
-                    placeholder = { Text("What topics will you cover? What should participants prepare?") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    maxLines = 4
-                )
+                // Description with AI generate button
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("Description") },
+                        placeholder = { Text("What topics will you cover? What should participants prepare?") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        maxLines = 4
+                    )
+                    Button(
+                        onClick = {
+                            if (subject.isBlank() && sessionTitle.isBlank()) {
+                                errorMessage = "Enter a subject and title first"
+                                return@Button
+                            }
+                            isGeneratingDesc = true
+                            scope.launch {
+                                val generated = geminiRepository.generateSessionDescription(
+                                    course = subject.ifBlank { "General" },
+                                    topic = sessionTitle.ifBlank { "Study session" }
+                                )
+                                description = generated
+                                isGeneratingDesc = false
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isGeneratingDesc,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        if (isGeneratingDesc) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    "Generating with AI...",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            Text(
+                                "✨ Generate description with AI",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
             }
 
             // Date & Time Card
@@ -277,7 +331,6 @@ fun CreateSessionScreen(navController: NavHostController) {
 
             // Location Card
             SectionCard(title = "Location", icon = Icons.Default.LocationOn) {
-                // Virtual toggle
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -306,34 +359,22 @@ fun CreateSessionScreen(navController: NavHostController) {
                     )
                 }
 
-                if (!isVirtual) {
-                    OutlinedTextField(
-                        value = location,
-                        onValueChange = { location = it },
-                        label = { Text("Location *") },
-                        placeholder = { Text("e.g., Library Room 301") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        singleLine = true,
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.LocationOn,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    )
-                } else {
-                    OutlinedTextField(
-                        value = location,
-                        onValueChange = { location = it },
-                        label = { Text("Meeting Link (optional)") },
-                        placeholder = { Text("e.g., Zoom link") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        singleLine = true
-                    )
-                }
+                OutlinedTextField(
+                    value = location,
+                    onValueChange = { location = it },
+                    label = { Text(if (isVirtual) "Meeting Link (optional)" else "Location *") },
+                    placeholder = { Text(if (isVirtual) "e.g., Zoom link" else "e.g., Library Room 301") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                )
             }
 
             // Club Session Card
@@ -465,7 +506,7 @@ fun CreateSessionScreen(navController: NavHostController) {
 @Composable
 fun SectionCard(
     title: String,
-    icon: ImageVector? = null,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(

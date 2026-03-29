@@ -68,9 +68,22 @@ fun HomeScreen(navController: NavHostController) {
             filteredSessions = sessions
             return@LaunchedEffect
         }
+        // Basic filter immediately while Gemini loads
+        filteredSessions = sessions.filter { session ->
+            session.course.contains(searchQuery, ignoreCase = true) ||
+                    session.topic.contains(searchQuery, ignoreCase = true) ||
+                    session.location.contains(searchQuery, ignoreCase = true) ||
+                    session.hostName.contains(searchQuery, ignoreCase = true)
+        }
+        // Then try Gemini in background
         isSearching = true
         delay(500)
-        filteredSessions = geminiRepository.smartSearch(searchQuery, sessions)
+        try {
+            val geminiResult = geminiRepository.smartSearch(searchQuery, sessions)
+            if (geminiResult.isNotEmpty()) filteredSessions = geminiResult
+        } catch (e: Exception) {
+            // Keep basic filter results
+        }
         isSearching = false
     }
 

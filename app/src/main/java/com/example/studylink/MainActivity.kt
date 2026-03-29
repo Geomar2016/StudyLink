@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -22,12 +23,14 @@ import androidx.navigation.compose.rememberNavController
 import com.example.studylink.navigation.NavGraph
 import com.example.studylink.navigation.Routes
 import com.example.studylink.ui.theme.StudyLinkTheme
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        FirebaseApp.initializeApp(this)
         setContent {
             StudyLinkTheme {
                 StudyLinkApp()
@@ -53,6 +56,7 @@ fun StudyLinkApp() {
         BottomNavItem(Routes.HOME, Icons.Default.Home, "Home"),
         BottomNavItem(Routes.SESSIONS_LIST, Icons.Default.DateRange, "Sessions"),
         BottomNavItem(Routes.CREATE_SESSION, Icons.Default.Add, "Create"),
+        BottomNavItem(Routes.CONVERSATIONS, Icons.Default.MailOutline, "Messages"),
         BottomNavItem(Routes.PROFILE, Icons.Default.Person, "Profile")
     )
 
@@ -60,7 +64,8 @@ fun StudyLinkApp() {
     val currentRoute = navBackStackEntry?.destination?.route
 
     val showBottomBar = currentRoute != Routes.LOGIN &&
-            currentRoute != Routes.SPLASH
+            currentRoute != Routes.SPLASH &&
+            currentRoute != Routes.CHAT
 
     Scaffold(
         bottomBar = {

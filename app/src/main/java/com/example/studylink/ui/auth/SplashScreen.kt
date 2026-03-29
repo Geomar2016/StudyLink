@@ -38,6 +38,7 @@ fun SplashScreen(navController: NavHostController) {
     val backgroundAlpha = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
+        delay(100)
         backgroundAlpha.animateTo(
             targetValue = 1f,
             animationSpec = tween(800, easing = FastOutSlowInEasing)
@@ -126,12 +127,13 @@ fun SplashScreen(navController: NavHostController) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(32.dp)
+            modifier = Modifier
+                .padding(32.dp)
+                .scale(logoScale.value)
         ) {
             // Real logo
             Box(
                 modifier = Modifier
-                    .scale(logoScale.value)
                     .alpha(logoAlpha.value)
                     .size(110.dp)
                     .clip(RoundedCornerShape(32.dp))
@@ -204,7 +206,6 @@ fun SplashScreen(navController: NavHostController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Inspiring quote
             Text(
                 text = "\"The beautiful thing about\nlearning is nobody can take it away.\"",
                 fontSize = 13.sp,

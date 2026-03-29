@@ -13,10 +13,11 @@ import java.net.URL
 class GeminiRepository {
 
     private val apiKey = BuildConfig.GEMINI_API_KEY
-    private val baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+    private val baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent"
 
     private suspend fun callGemini(prompt: String): String = withContext(Dispatchers.IO) {
         try {
+            android.util.Log.d("GeminiAPI", "Key length: ${apiKey.length}, URL: $baseUrl")
             val url = URL(baseUrl)
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "POST"

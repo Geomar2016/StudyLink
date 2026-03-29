@@ -13,6 +13,8 @@ import com.example.studylink.ui.auth.LoginScreen
 import com.example.studylink.ui.auth.SplashScreen
 import com.example.studylink.ui.home.HomeScreen
 import com.example.studylink.ui.profile.ProfileScreen
+import com.example.studylink.ui.session.ChatScreen
+import com.example.studylink.ui.session.ConversationsScreen
 import com.example.studylink.ui.session.CreateSessionScreen
 import com.example.studylink.ui.session.SessionDetailScreen
 import com.example.studylink.ui.session.SessionsListScreen
@@ -27,6 +29,8 @@ object Routes {
     const val SESSION_DETAIL = "session_detail/{sessionId}"
     const val PROFILE = "profile"
     const val SETTINGS = "settings"
+    const val CHAT = "chat/{toUserId}/{toUserName}"
+    const val CONVERSATIONS = "conversations"
 }
 
 @OptIn(ExperimentalAnimationApi::class)
@@ -89,6 +93,18 @@ fun NavGraph(
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(navController = navController)
+        }
+        composable(Routes.CHAT) { backStackEntry ->
+            val toUserId = backStackEntry.arguments?.getString("toUserId") ?: ""
+            val toUserName = backStackEntry.arguments?.getString("toUserName") ?: ""
+            ChatScreen(
+                navController = navController,
+                toUserId = toUserId,
+                toUserName = toUserName
+            )
+        }
+        composable(Routes.CONVERSATIONS) {
+            ConversationsScreen(navController = navController)
         }
     }
 }

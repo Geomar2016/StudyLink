@@ -17,20 +17,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.example.studylink.data.model.Session
+import com.example.studylink.data.repository.GeminiRepository
 import com.example.studylink.data.repository.SessionRepository
 import com.example.studylink.navigation.Routes
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionDetailScreen(navController: NavHostController, sessionId: String) {
     val sessionRepository = SessionRepository()
+    val geminiRepository = GeminiRepository()
     val auth = FirebaseAuth.getInstance()
     val currentUserId = auth.currentUser?.uid ?: ""
+    val scope = rememberCoroutineScope()
 
     var session by remember { mutableStateOf<Session?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
+    var recap by remember { mutableStateOf("") }
+    var isGeneratingRecap by remember { mutableStateOf(false) }
 
     LaunchedEffect(sessionId) {
         sessionRepository.getSessions { sessions ->
@@ -138,6 +144,20 @@ fun SessionDetailScreen(navController: NavHostController, sessionId: String) {
                             Spacer(modifier = Modifier.height(8.dp))
                             InfoRow(label = "🔒 Club", value = s.club)
                         }
+
+                        // Message host button
+                        if (s.hostId != currentUserId) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    navController.navigate("chat/${s.hostId}/${s.hostName}")
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("💬 Message ${s.hostName}")
+                            }
+                        }
                     }
                 }
 
@@ -198,6 +218,89 @@ fun SessionDetailScreen(navController: NavHostController, sessionId: String) {
                     }
                 }
 
+                // AI Prep Checklist card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("📋", fontSize = 18.sp)
+                                Text(
+                                    text = "AI Session Prep",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            TextButton(
+                                onClick = {
+                                    isGeneratingRecap = true
+                                    scope.launch {
+                                        recap = geminiRepository.generateSessionDescription(
+                                            course = s.course,
+                                            topic = s.topic
+                                        )
+                                        isGeneratingRecap = false
+                                    }
+                                }
+                            ) {
+                                Text(
+                                    text = if (recap.isEmpty()) "Generate" else "Refresh",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+
+                        if (isGeneratingRecap) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Preparing your study checklist...",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else if (recap.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = recap,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                lineHeight = 20.sp
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Get an AI-generated prep checklist for this session",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
                 if (message.isNotEmpty()) {
                     Text(
                         text = message,
@@ -248,7 +351,7 @@ fun SessionDetailScreen(navController: NavHostController, sessionId: String) {
                         Text(
                             text = when {
                                 isHost -> "You're hosting this session"
-                                alreadyJoined -> "✓ You've joined"
+                                alreadyJoined -> "You've joined"
                                 isFull -> "Session is full"
                                 else -> "Join Session"
                             },
